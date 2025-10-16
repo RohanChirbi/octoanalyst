@@ -4,6 +4,9 @@ An AI engine for deeply analyzing stock entities listed on NSE. Tranditional LLM
 
 This project is written in Javascript and Python along with libraries such as React and Node.js!
 
+Make sure you check out [contribution help](https://github.com/acmpesuecc/octoanalyst/blob/main/CONTRIBUTING.md) for better understanding. This will also help ***address common issues that you could face*** while running locally.
+
+
 ## Installation
 
 ```bash
@@ -29,16 +32,15 @@ For backend:
      ```dotenv
       GEMINI_API_KEY=
       OPENROUTER_API_KEY=
-      GROQ_API_KEY=
      ```
      
-   - Create a venv for running python
+   - Create a venv for running the python scripts
      - Using uv 
        ```bash
        uv venv
        source .venv/bin/activate
        uv pip install -r requirements.txt
-       huggingface-cli download sentence-transformers/all-MiniLM-L6-v2   --local-dir ./backend/models/all-MiniLM-L6-v2
+       huggingface-cli download sentence-transformers/all-MiniLM-L6-v2   --local-dir ./models/all-MiniLM-L6-v2
        ```
 
      - If you dont have uv installed, you could use pip to create the venv as well.
@@ -53,9 +55,6 @@ For backend:
 [Mathew K Alexander](https://github.com/Mathew-K-Alexander)
 
 
-### Contributing
-Check out [contribution help](https://github.com/acmpesuecc/octoanalyst/blob/main/CONTRIBUTING.md)
-
 
 ### License
 
@@ -65,5 +64,6 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Preview
 <img width="1919" height="959" alt="image" src="https://github.com/user-attachments/assets/aec5f56f-8a04-42e7-9c61-de3b91040ca0" />
+
 
 
