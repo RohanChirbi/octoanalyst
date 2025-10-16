@@ -1,5 +1,19 @@
-## Contributors Help
+# Contributors Help
 
+## The Workflow
+ - The user can pick listed company ticker and the workflow proceeds to fetch pdfs of annual reports of the company from nse servers and parses it into text.
+ - For analysis of the report, the user creates a rules file(currently harcoded) where they mention the respective topics they want to analyse the selected company on.
+ - For fetching data from the pdf, a py script gives each page a topic name by trying to find the largest bit of text on the page and the uses a vector search to fetch the respective pages according to the topic names mentioned in rules.
+ - With each topic name and relevant content fetched, the same is sent to ai to analyse and summarize each topic info
+ - This processed data is finally displayed as a mindmap.
+
+### Different components in use
+ - Frontend:
+   - React for frontend logic and shadcn for simple UI.
+ - Backend:
+   - Node.js and Express for API layer
+   - Python files for parsing and semantic search
+     
 ## PR Guidelines 
 
 Make sure to tag the issue number that you are attempting to solve with the PR. Give credits and resources when its due.
