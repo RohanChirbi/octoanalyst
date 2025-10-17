@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { NseIndia } from "./index.js";
-
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
@@ -14,6 +13,8 @@ import {
 } from "./jobs.js";
 import "dotenv/config";
 import { runPythonJson, runGeminiJson, downloadPdfOrZip } from "./helpers.js";
+import { fetchIndexPage, extractTopicPageMap } from "./pdfindexProcessor.js";
+import { findPagesForTopics } from "./topicPageMapper.js";
 
 const mainRouter = Router();
 const nseIndia = new NseIndia();
@@ -23,13 +24,12 @@ const __dirname = path.dirname(__filename);
 
 const VENV_PY = path.resolve(__dirname, "../parse_trials/.venv/bin/python3");
 const PARSER = path.resolve(__dirname, "./python_helpers/parse.py");
-const SEARCH = path.resolve(__dirname, "./python_helpers/semantic_search.py");
 const TOPICS_JSON = path.resolve(__dirname, "./rules.json");
 
 function safeUpdate(id, bus, status, payload = {}) {
   try {
     bus.emit("progress", {
-      step: status.toLowerCase().replace(/\s+/g, "_"), //replace every whitespaces with underscores
+      step: status.toLowerCase().replace(/\s+/g, "_"),
       message: status,
       ...payload,
     });
@@ -48,10 +48,10 @@ mainRouter.post("/api/equity/annualReports/:symbol/start", async (req, res) => {
 
   res.json({ jobId: id });
 
-  const checkpath = path.join("uploads", `PDF/${symbol}.pdf`);
-  const pagesJsonPath = path.join("uploads", `JSON/${symbol}.json`);
+  const checkpath = path.join("Uploads", `PDF/${symbol}.pdf`);
+  const pagesJsonPath = path.join("Uploads", `JSON/${symbol}.json`);
   const searchResultsPath = path.join(
-    "uploads",
+    "Uploads",
     `JSON/${symbol}_search_results.json`
   );
   const checkGeminiOutputPath = path.join(
@@ -73,7 +73,7 @@ mainRouter.post("/api/equity/annualReports/:symbol/start", async (req, res) => {
 
       let localPDF;
       if (fs.existsSync(checkpath)) {
-        console.log("exits");
+        console.log("exists");
         localPDF = checkpath;
       } else {
         localPDF = await downloadPdfOrZip(pdfUrl, symbol);
@@ -88,44 +88,40 @@ mainRouter.post("/api/equity/annualReports/:symbol/start", async (req, res) => {
         fs.writeFileSync(pagesJsonPath, JSON.stringify(parsed, null, 2));
       }
 
-      // STEP 4: Semantic search
-      safeUpdate(id, bus, "Collecting relevant topics via semantic search");
+      // STEP 4: Extract topic-to-page map from index
+      safeUpdate(id, bus, "Extracting topic-to-page map from index");
+
+      const topics = JSON.parse(fs.readFileSync(TOPICS_JSON, "utf8")); // Load topics from rules.json
+      const indexPageText = await fetchIndexPage(localPDF);
+      const topicPageMap = await extractTopicPageMap(indexPageText);
+
+      // STEP 5: Find pages for topics
+      safeUpdate(id, bus, "Collecting relevant pages using topic-to-page map");
 
       if (fs.existsSync(searchResultsPath)) {
-        console.log("search result exits");
+        console.log("search results exist");
       } else {
-        const searchOut = await runPythonJson(VENV_PY, [
-          SEARCH,
-          pagesJsonPath,
-          TOPICS_JSON,
-          "0.55",
-          "title",
-          "5",
-        ]);
-        const searchResultsPath = path.join(
-          "uploads",
-          `JSON/${symbol}_search_results.json`
-        );
-        fs.writeFileSync(searchResultsPath, JSON.stringify(searchOut, null, 2));
+        const searchResults = await findPagesForTopics(localPDF, topics, topicPageMap, pagesJsonPath);
+        fs.writeFileSync(searchResultsPath, JSON.stringify(searchResults, null, 2));
       }
 
-      //STEP 7: AI ANALYSIS
+      // STEP 6: AI Analysis
       safeUpdate(id, bus, "Analysing topics using AI");
 
       if (fs.existsSync(checkGeminiOutputPath)) {
-        console.log("gemini analysis exits");
+        console.log("gemini analysis exists");
       } else {
         await runGeminiJson(symbol);
       }
 
-      // STEP 6: Map
+      // STEP 7: Map
       bus.emit("progress", {
         step: "done",
         message: "Creating map",
       });
       setState(id, {
         status: "done",
-        files: { pagesJsonPath, searchResultsPath },
+        files: { pagesJsonPath, searchResultsPath, topicPageMap },
       });
       finishJob(id);
     } catch (e) {
